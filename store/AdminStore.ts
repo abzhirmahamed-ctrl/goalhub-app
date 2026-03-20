@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "@goalhub_admin_streams";
-const ADMIN_PASSWORD = "goalhub2024";
+const ADMIN_PASSWORD = "Apzhir4717";
 
 export const AdminStore = {
   password: ADMIN_PASSWORD,
