@@ -110,9 +110,6 @@ export default function AdminScreen() {
             <Text style={styles.unlockBtnText}>{t.adminUnlock}</Text>
           </Pressable>
 
-          <Text style={styles.hintText}>
-            Default password: <Text style={{ color: Colors.accent }}>goalhub2024</Text>
-          </Text>
         </View>
       </View>
     );
