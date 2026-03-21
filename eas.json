@@ -15,11 +15,17 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FD_API_KEY": "REPLACE_WITH_YOUR_FOOTBALL_DATA_API_KEY"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_FD_API_KEY": "REPLACE_WITH_YOUR_FOOTBALL_DATA_API_KEY"
       }
     }
   },
