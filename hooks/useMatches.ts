@@ -37,15 +37,14 @@ export type MatchesResult = {
 const LEAGUE_PRIORITY: Record<string, number> = {
   "Champions League": 1,
   "Premier League":   2,
-  "Europa League":    3,
-  "La Liga":          4,
-  "Serie A":          5,
-  "Bundesliga":       6,
-  "Saudi Pro League": 7,
-  "Primeira Liga":    8,
+  "La Liga":          3,
+  "Serie A":          4,
+  "Bundesliga":       5,
+  "Ligue 1":          6,
+  "Primeira Liga":    7,
+  "Eredivisie":       8,
+  "Saudi Pro League": 9,
   "Süper Lig":        9,
-  "Ligue 1":          10,
-  "Eredivisie":       11,
 };
 
 function getSomaliaDateStr(offsetDays = 0): string {
@@ -80,13 +79,14 @@ function sortMatches(matches: Match[]): Match[] {
 const FD_COMPETITION_NAMES: Record<string, string> = {
   CL:  "Champions League",
   PL:  "Premier League",
-  EL:  "Europa League",
   PD:  "La Liga",
   SA:  "Serie A",
   BL1: "Bundesliga",
   FL1: "Ligue 1",
   PPL: "Primeira Liga",
   DED: "Eredivisie",
+  SPL: "Saudi Pro League",
+  TL:  "Süper Lig",
 };
 
 function mapFdStatus(s: string): "live" | "upcoming" | "finished" {
