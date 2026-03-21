@@ -3,7 +3,9 @@ import {
   ActivityIndicator,
   Image,
   Platform,
+  Pressable,
   RefreshControl,
+  ScrollView,
   SectionList,
   StyleSheet,
   Text,
@@ -22,15 +24,33 @@ import { useMatches, type ApiSource } from "@/hooks/useMatches";
 import { useLanguage } from "@/context/LanguageContext";
 import { useQueryClient } from "@tanstack/react-query";
 
+// ── The 9 target leagues ──────────────────────────────────────────────────────
+const LEAGUE_FILTERS = [
+  { id: "all",             label: "All",       flag: "🌍" },
+  { id: "Champions League", label: "UCL",      flag: "🏆" },
+  { id: "Premier League",   label: "England",  flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+  { id: "La Liga",          label: "Spain",    flag: "🇪🇸" },
+  { id: "Serie A",          label: "Italy",    flag: "🇮🇹" },
+  { id: "Bundesliga",       label: "Germany",  flag: "🇩🇪" },
+  { id: "Ligue 1",          label: "France",   flag: "🇫🇷" },
+  { id: "Primeira Liga",    label: "Portugal", flag: "🇵🇹" },
+  { id: "Eredivisie",       label: "Neth.",    flag: "🇳🇱" },
+  { id: "Saudi Pro League", label: "Saudi",    flag: "🇸🇦" },
+  { id: "Süper Lig",        label: "Turkey",   flag: "🇹🇷" },
+] as const;
+
+type LeagueId = typeof LEAGUE_FILTERS[number]["id"];
+
 const LEAGUE_PRIORITY: Record<string, number> = {
   "Champions League": 1,
   "Premier League":   2,
-  "Europa League":    3,
-  "La Liga":          4,
-  "Serie A":          5,
-  "Bundesliga":       6,
-  "Saudi Pro League": 7,
-  "Primeira Liga":    8,
+  "La Liga":          3,
+  "Serie A":          4,
+  "Bundesliga":       5,
+  "Ligue 1":          6,
+  "Primeira Liga":    7,
+  "Eredivisie":       8,
+  "Saudi Pro League": 9,
   "Süper Lig":        9,
 };
 
@@ -44,19 +64,13 @@ function groupByLeague(matches: Match[]): Section[] {
   const map = new Map<string, Section>();
   for (const match of matches) {
     if (!map.has(match.league)) {
-      map.set(match.league, {
-        title: match.league,
-        logo: match.leagueLogo ?? null,
-        data: [],
-      });
+      map.set(match.league, { title: match.league, logo: match.leagueLogo ?? null, data: [] });
     }
     map.get(match.league)!.data.push(match);
   }
-  return Array.from(map.values()).sort((a, b) => {
-    const aPriority = LEAGUE_PRIORITY[a.title] ?? 999;
-    const bPriority = LEAGUE_PRIORITY[b.title] ?? 999;
-    return aPriority - bPriority;
-  });
+  return Array.from(map.values()).sort((a, b) =>
+    (LEAGUE_PRIORITY[a.title] ?? 999) - (LEAGUE_PRIORITY[b.title] ?? 999)
+  );
 }
 
 function LeagueSectionHeader({ title, logo }: { title: string; logo: string | null }) {
@@ -85,13 +99,8 @@ const sectionStyles = StyleSheet.create({
     borderBottomColor: "rgba(168,85,247,0.15)",
     backgroundColor: Colors.bgDeep,
   },
-  logo: {
-    width: 20,
-    height: 20,
-  },
-  logoEmoji: {
-    fontSize: 16,
-  },
+  logo: { width: 20, height: 20 },
+  logoEmoji: { fontSize: 16 },
   title: {
     color: Colors.text,
     fontSize: 13,
@@ -100,6 +109,61 @@ const sectionStyles = StyleSheet.create({
   },
 });
 
+// ── League filter chip ────────────────────────────────────────────────────────
+function LeagueChip({
+  flag,
+  label,
+  active,
+  onPress,
+}: {
+  flag: string;
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[leagueChipStyles.chip, active && leagueChipStyles.chipActive]}
+    >
+      <Text style={leagueChipStyles.flag}>{flag}</Text>
+      <Text style={[leagueChipStyles.label, active && leagueChipStyles.labelActive]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+const leagueChipStyles = StyleSheet.create({
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(168,85,247,0.15)",
+  },
+  chipActive: {
+    backgroundColor: "rgba(168,85,247,0.18)",
+    borderColor: Colors.accent,
+  },
+  flag: {
+    fontSize: 13,
+  },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  labelActive: {
+    color: Colors.accent,
+  },
+});
+
+// ── Main screen ───────────────────────────────────────────────────────────────
 export default function MatchesScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
@@ -115,6 +179,7 @@ export default function MatchesScreen() {
   );
 
   const [statusFilter, setStatusFilter] = useState<"all" | MatchStatus>("all");
+  const [leagueFilter, setLeagueFilter] = useState<LeagueId>("all");
 
   const STATUS_FILTERS: { label: string; value: "all" | MatchStatus }[] = [
     { label: t.all,      value: "all" },
@@ -127,11 +192,21 @@ export default function MatchesScreen() {
     [footballMatches]
   );
 
+  // Filter the available league chips to only those that have matches
+  const availableLeagues = useMemo(() => {
+    const leaguesWithMatches = new Set(footballMatches.map((m) => m.league));
+    return LEAGUE_FILTERS.filter(
+      (f) => f.id === "all" || leaguesWithMatches.has(f.id)
+    );
+  }, [footballMatches]);
+
   const filtered = useMemo(() => {
     return footballMatches.filter((m) => {
-      return statusFilter === "all" || m.status === statusFilter;
+      const statusOk = statusFilter === "all" || m.status === statusFilter;
+      const leagueOk = leagueFilter === "all" || m.league === leagueFilter;
+      return statusOk && leagueOk;
     });
-  }, [footballMatches, statusFilter]);
+  }, [footballMatches, statusFilter, leagueFilter]);
 
   const sections = useMemo(() => groupByLeague(filtered), [filtered]);
 
@@ -144,11 +219,11 @@ export default function MatchesScreen() {
 
   const ListHeader = (
     <View style={styles.header}>
+      {/* Brand row */}
       <View style={styles.brandRow}>
         <View style={styles.logoBox}>
           <GoalHubLogo size={36} />
         </View>
-
         <View style={styles.brandTextBlock}>
           <Text style={styles.brandName}>
             <Text style={styles.brandNameWhite}>Goal</Text>
@@ -156,7 +231,6 @@ export default function MatchesScreen() {
           </Text>
           <Text style={styles.brandTagline}>{t.appTagline}</Text>
         </View>
-
         {liveCount > 0 && (
           <View style={styles.livePill}>
             <LiveBadge />
@@ -169,6 +243,7 @@ export default function MatchesScreen() {
 
       <View style={styles.divider} />
 
+      {/* Status filter */}
       <View style={styles.filterRow}>
         {STATUS_FILTERS.map((f) => (
           <FilterChip
@@ -179,6 +254,23 @@ export default function MatchesScreen() {
           />
         ))}
       </View>
+
+      {/* League filter — horizontal scroll */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.leagueRow}
+      >
+        {availableLeagues.map((league) => (
+          <LeagueChip
+            key={league.id}
+            flag={league.flag}
+            label={league.label}
+            active={leagueFilter === league.id}
+            onPress={() => setLeagueFilter(league.id as LeagueId)}
+          />
+        ))}
+      </ScrollView>
     </View>
   );
 
@@ -195,7 +287,6 @@ export default function MatchesScreen() {
   return (
     <View style={styles.container}>
       <GlowBackground />
-
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -309,6 +400,11 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: "row",
     gap: 8,
+  },
+  leagueRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 2,
   },
   empty: {
     alignItems: "center",
